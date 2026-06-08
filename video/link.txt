@@ -1,0 +1,7 @@
+Presentation video link (max 5 minutes):
+[PASTE YOUR VIDEO URL HERE]
+
+Requirements:
+- 3-4 slide technical architecture section (Part I)
+- Live Streamlit dashboard demo (Part II)
+- No code scrolling

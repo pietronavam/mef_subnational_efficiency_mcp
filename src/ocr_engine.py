@@ -41,7 +41,10 @@ def pdf_to_images(pdf_path: str, page_numbers: list[int]) -> list[tuple[int, Ima
 def run_ocr_on_image(image: Image.Image, ocr_engine) -> list[dict]:
     """Run PaddleOCR on a PIL image and return structured text blocks."""
     img_array = np.array(image.convert("RGB"))
-    results = ocr_engine.ocr(img_array, cls=True)
+    try:
+        results = ocr_engine.ocr(img_array, cls=True)
+    except Exception:
+        results = ocr_engine.ocr(img_array)
     blocks = []
     if not results or results[0] is None:
         return blocks
@@ -105,7 +108,7 @@ def process_pdf(pdf_path: str, page_numbers: list[int]) -> dict:
     from paddleocr import PaddleOCR
 
     PROCESSED.mkdir(parents=True, exist_ok=True)
-    ocr = PaddleOCR(use_angle_cls=True, lang="es", show_log=False)
+    ocr = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
 
     images = pdf_to_images(pdf_path, page_numbers)
     if not images:

@@ -1,0 +1,11 @@
+# Large raw files — download via descargar_documento_1964 MCP tool
+data/raw_pdfs/*.pdf
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# PaddleOCR model cache
+.paddleocr/

@@ -9,7 +9,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import urllib3
 import requests
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+_GET = lambda url, **kw: requests.get(url, verify=False, **kw)
+
 from mcp.server.fastmcp import FastMCP
 
 ROOT = Path(__file__).parent.parent
@@ -27,7 +32,7 @@ mcp = FastMCP("MEF Subnational Efficiency")
 def buscar_datasets(query: str, rows: int = 10) -> dict:
     """Search datasets on the portal using a keyword string via CKAN API."""
     url = f"{PORTAL}/api/3/action/package_search"
-    r = requests.get(url, params={"q": query, "rows": rows}, timeout=30)
+    r = _GET(url, params={"q": query, "rows": rows}, timeout=30)
     r.raise_for_status()
     data = r.json()
     if not data.get("success"):
@@ -62,7 +67,7 @@ def buscar_datasets(query: str, rows: int = 10) -> dict:
 def obtener_detalle_dataset(dataset_id: str) -> dict:
     """Extract direct download URLs for all resources of a dataset by ID."""
     url = f"{PORTAL}/api/3/action/package_show"
-    r = requests.get(url, params={"id": dataset_id}, timeout=30)
+    r = _GET(url, params={"id": dataset_id}, timeout=30)
     r.raise_for_status()
     data = r.json()
     if not data.get("success"):
@@ -98,7 +103,7 @@ def descargar_documento_1964(pdf_url: str, filename: str = "hacienda_1964.pdf") 
     dest = RAW_PDFS / filename
     if dest.exists():
         return {"status": "already_exists", "path": str(dest), "size_mb": round(dest.stat().st_size / 1e6, 2)}
-    r = requests.get(pdf_url, stream=True, timeout=120)
+    r = _GET(pdf_url, stream=True, timeout=120)
     r.raise_for_status()
     with open(dest, "wb") as f:
         for chunk in r.iter_content(chunk_size=8192):
@@ -112,7 +117,7 @@ def descargar_documento_1964(pdf_url: str, filename: str = "hacienda_1964.pdf") 
 def listar_entidades_publicas(limit: int = 30) -> dict:
     """Fetch a list of active public organizations registered on the portal."""
     url = f"{PORTAL}/api/3/action/organization_list"
-    r = requests.get(url, params={"all_fields": True, "limit": limit}, timeout=30)
+    r = _GET(url, params={"all_fields": True, "limit": limit}, timeout=30)
     r.raise_for_status()
     data = r.json()
     if not data.get("success"):
@@ -133,7 +138,7 @@ def listar_entidades_publicas(limit: int = 30) -> dict:
 def listar_categorias_tematicas() -> dict:
     """Map high-level data groups (topic categories) available on the portal."""
     url = f"{PORTAL}/api/3/action/group_list"
-    r = requests.get(url, params={"all_fields": True}, timeout=30)
+    r = _GET(url, params={"all_fields": True}, timeout=30)
     r.raise_for_status()
     data = r.json()
     if not data.get("success"):
@@ -154,11 +159,7 @@ def listar_categorias_tematicas() -> dict:
 def obtener_ultimas_actualizaciones(limit: int = 10) -> dict:
     """Return the most recently updated datasets on the portal."""
     url = f"{PORTAL}/api/3/action/package_search"
-    r = requests.get(
-        url,
-        params={"sort": "metadata_modified desc", "rows": limit},
-        timeout=30,
-    )
+    r = _GET(url, params={"sort": "metadata_modified desc", "rows": limit}, timeout=30)
     r.raise_for_status()
     data = r.json()
     if not data.get("success"):
@@ -189,7 +190,7 @@ def inspeccionar_esquema_csv(resource_url: str, sample_rows: int = 10) -> dict:
     import pandas as pd
 
     SNAPSHOTS.mkdir(parents=True, exist_ok=True)
-    r = requests.get(resource_url, stream=True, timeout=60)
+    r = _GET(resource_url, stream=True, timeout=60)
     r.raise_for_status()
 
     lines: list[bytes] = []
@@ -233,7 +234,7 @@ def consultar_datastore_filtrado(
     params: dict[str, Any] = {"resource_id": resource_id, "limit": limit, "offset": offset}
     if filters:
         params["filters"] = json.dumps(filters)
-    r = requests.get(url, params=params, timeout=60)
+    r = _GET(url, params=params, timeout=60)
     r.raise_for_status()
     data = r.json()
     if not data.get("success"):

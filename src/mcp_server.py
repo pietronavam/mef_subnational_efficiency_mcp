@@ -30,34 +30,56 @@ mcp = FastMCP("MEF Subnational Efficiency")
 
 @mcp.tool()
 def buscar_datasets(query: str, rows: int = 10) -> dict:
-    """Search datasets on the portal using a keyword string via CKAN API."""
+    """Search datasets on the portal using a keyword string via CKAN API.
+    Falls back to package_list keyword filter when package_search is unavailable."""
+    # Primary: package_search (requires Solr backend)
     url = f"{PORTAL}/api/3/action/package_search"
-    r = _GET(url, params={"q": query, "rows": rows}, timeout=30)
-    r.raise_for_status()
-    data = r.json()
-    if not data.get("success"):
-        return {"error": "Search failed", "raw": data}
-    results = data["result"]["results"]
+    try:
+        r = _GET(url, params={"q": query, "rows": rows}, timeout=30)
+        if r.status_code == 200:
+            data = r.json()
+            if data.get("success"):
+                results = data["result"]["results"]
+                return {
+                    "total": data["result"]["count"],
+                    "datasets": [
+                        {
+                            "id": d["id"],
+                            "name": d["name"],
+                            "title": d.get("title", ""),
+                            "organization": (d.get("organization") or {}).get("title", ""),
+                            "resources": [
+                                {
+                                    "id": res["id"],
+                                    "name": res.get("name", ""),
+                                    "format": res.get("format", ""),
+                                    "url": res.get("url", ""),
+                                }
+                                for res in d.get("resources", [])[:5]
+                            ],
+                        }
+                        for d in results
+                    ],
+                }
+    except Exception:
+        pass
+
+    # Fallback: package_list + keyword filter (works even without Solr)
+    list_url = f"{PORTAL}/api/3/action/package_list"
+    r2 = _GET(list_url, params={"limit": 1000}, timeout=30)
+    r2.raise_for_status()
+    data2 = r2.json()
+    if not data2.get("success"):
+        return {"error": "Both package_search and package_list failed"}
+    keywords = [k.lower() for k in query.split()]
+    matches = [
+        name for name in data2["result"]
+        if any(kw in name.lower() for kw in keywords)
+    ][:rows]
     return {
-        "total": data["result"]["count"],
-        "datasets": [
-            {
-                "id": d["id"],
-                "name": d["name"],
-                "title": d.get("title", ""),
-                "organization": (d.get("organization") or {}).get("title", ""),
-                "resources": [
-                    {
-                        "id": res["id"],
-                        "name": res.get("name", ""),
-                        "format": res.get("format", ""),
-                        "url": res.get("url", ""),
-                    }
-                    for res in d.get("resources", [])[:5]
-                ],
-            }
-            for d in results
-        ],
+        "total": len(matches),
+        "note": "package_search unavailable (Solr offline); results from package_list keyword filter",
+        "datasets": [{"id": name, "name": name, "title": name.replace("-", " ").title(), "organization": "", "resources": []} for name in matches],
     }
 
 
@@ -65,30 +87,58 @@ def buscar_datasets(query: str, rows: int = 10) -> dict:
 
 @mcp.tool()
 def obtener_detalle_dataset(dataset_id: str) -> dict:
-    """Extract direct download URLs for all resources of a dataset by ID."""
+    """Extract direct download URLs for all resources of a dataset by ID.
+    Falls back to current_package_list_with_resources scan when package_show is unavailable."""
     url = f"{PORTAL}/api/3/action/package_show"
-    r = _GET(url, params={"id": dataset_id}, timeout=30)
-    r.raise_for_status()
-    data = r.json()
-    if not data.get("success"):
-        return {"error": "Dataset not found", "raw": data}
-    pkg = data["result"]
-    return {
-        "id": pkg["id"],
-        "title": pkg.get("title", ""),
-        "notes": pkg.get("notes", "")[:500],
-        "resources": [
-            {
-                "id": res["id"],
-                "name": res.get("name", ""),
-                "format": res.get("format", ""),
-                "url": res.get("url", ""),
-                "size": res.get("size"),
-                "last_modified": res.get("last_modified", ""),
+    try:
+        r = _GET(url, params={"id": dataset_id}, timeout=30)
+        if r.status_code == 200:
+            data = r.json()
+            if data.get("success"):
+                pkg = data["result"]
+                return {
+                    "id": pkg["id"],
+                    "title": pkg.get("title", ""),
+                    "notes": pkg.get("notes", "")[:500],
+                    "resources": [
+                        {
+                            "id": res["id"],
+                            "name": res.get("name", ""),
+                            "format": res.get("format", ""),
+                            "url": res.get("url", ""),
+                            "size": res.get("size"),
+                            "last_modified": res.get("last_modified", ""),
+                        }
+                        for res in pkg.get("resources", [])
+                    ],
+                }
+    except Exception:
+        pass
+
+    # Fallback: scan current_package_list_with_resources for a name match
+    list_url = f"{PORTAL}/api/3/action/current_package_list_with_resources"
+    r2 = _GET(list_url, params={"limit": 200}, timeout=60)
+    r2.raise_for_status()
+    data2 = r2.json()
+    for pkg in data2.get("result", []):
+        if pkg.get("id") == dataset_id or pkg.get("name") == dataset_id:
+            return {
+                "id": pkg.get("id", dataset_id),
+                "title": pkg.get("title", ""),
+                "notes": pkg.get("notes", "")[:500],
+                "resources": [
+                    {
+                        "id": res.get("id", ""),
+                        "name": res.get("name", ""),
+                        "format": res.get("format", ""),
+                        "url": res.get("url", ""),
+                        "size": res.get("size"),
+                        "last_modified": res.get("last_modified", ""),
+                    }
+                    for res in pkg.get("resources", [])
+                ],
             }
-            for res in pkg.get("resources", [])
-        ],
-    }
+    return {"error": f"Dataset '{dataset_id}' not found via package_show or package_list scan"}
 
 
 # ── 3. descargar_documento_1964 ──────────────────────────────────────────────

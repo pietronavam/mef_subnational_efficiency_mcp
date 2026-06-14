@@ -13,7 +13,7 @@
 
 ## OCR Quality
 
-- [x] **Pages processed:** 20 (minimum required: 15) ✅
+- [x] **Pages processed:** 17 (minimum required: 15) ✅
 - [x] **Average confidence:** 0.87 (threshold: 0.60) ✅
 - [x] **Numeric blocks extracted:** 284 financial figures ✅
 - [x] **Ministries identified:** 15 ministerial chapters digitised
@@ -48,7 +48,7 @@
 All 6 grading criteria are satisfied:
 1. Local MCP Server — 10 tools implemented, FastMCP architecture ✅
 2. Data Ingestion Engineering — snapshot → local script → Parquet anti-flood strategy ✅
-3. 1964 PaddleOCR Digitisation — 20 pages processed (>15 minimum) ✅
+3. 1964 PaddleOCR Digitisation — 17 pages processed (>15 minimum) ✅
 4. Dual Skill Cooperation — Executor + Evaluator JSON skills in `.claude/skills/` ✅
 5. Analytical Rigor — Avance%, Saldo No Devengado, 2+ historical charts on Tab 1 ✅
 6. Streamlit Interface — 4 tabs, sub-second caching, correct era isolation ✅

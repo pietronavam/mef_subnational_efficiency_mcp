@@ -1,5 +1,5 @@
 Presentation video link (max 5 minutes):
-[PASTE YOUR VIDEO URL HERE]
+https://drive.google.com/file/d/1iwx9Jj4B9LpVrFOAVdioFsSMnAHpQCnj/view?usp=sharing
 
 Requirements:
 - 3-4 slide technical architecture section (Part I)
